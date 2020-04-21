@@ -1,18 +1,45 @@
 import json
 import os
+import sys
+
+state = ""
+dist = ""
 
 def justIn():
 	print("Looks like you are new to this program. Please input your State and District data")
+	global state 
 	state = input()
+	global dist
 	dist = input()
 	os.chdir("/tmp/")
-	os.makedirs("pycovid")
+	try:
+		os.makedirs("pycovid")
+	except:
+		os.system("rm -rf /tmp/pycovid/")
+		os.chdir("/tmp")
+		os.makedirs("pycovid")
 	os.chdir("/tmp/pycovid/")
 	required_data = {"State": state, "District": dist}
 	fp = open("config.json",'w')
 	json.dump(required_data,fp)
 	fp.close()
 
+def addAgain():
+	print("Looks like something went wrong with what you typed. Here are possible reasons:\n1. Keep spaces between state names.\n2. Please check if your locality is in the json files for local stats.")
+	os.system('rm -rf /tmp/pycovid')
+	print("Please enter your State and District again")
+	global state 
+	state = input()
+	global dist
+	dist = input()
+	print(state, dist)
+	required_data = {"State": state, "District": dist}
+	os.chdir("/tmp/")
+	os.makedirs("pycovid")
+	os.chdir("/tmp/pycovid/")
+	fp = open("config.json",'w')
+	json.dump(required_data,fp)
+	fp.close()
 
 def getStats(jsonFile, state, dist):
     # try to open the json file, or download
@@ -51,8 +78,14 @@ def getStats(jsonFile, state, dist):
 
 	if jsonFile == 'state_district_wise.json':
 		active = "NA"
-		confirmed = local[state]['districtData'][dist]['confirmed']
+		try:
+			confirmed = local[state]['districtData'][dist]['confirmed']
+		except:
+			addAgain()
+			print("Please run the program again.")
+			sys.exit(0)
 		deceased = "NA"
+
 	if jsonFile == 'latest':
 		key = 0
 		for i in range(33):
@@ -61,9 +94,15 @@ def getStats(jsonFile, state, dist):
 		# api seems to think "Telangana" is spelled "Telengana"
 		if state == "Telangana":
 			key = 28
-		confirmed  = local['data']['regional'][i]['totalConfirmed']
-		active = confirmed - local['data']['regional'][i]['discharged']
-		deceased = local['data']['regional'][i]['deaths']
+		try:
+			confirmed  = local['data']['regional'][i]['totalConfirmed']
+			active = confirmed - local['data']['regional'][i]['discharged']
+			deceased = local['data']['regional'][i]['deaths']
+		except:
+			addAgain()
+			print("Please run the program again")
+			sys.exit(0)
+	
 	if jsonFile == 'latest' and state == "NA":
 		confirmed = local['data']['summary']['total']
 		active = confirmed - local['data']['summary']['discharged']
@@ -78,11 +117,14 @@ def main():
 	# Country and State data from https://api.rootnet.in/
 	try:
 		os.chdir("/tmp/pycovid/")
+		configs = json.loads(open("config.json",'rb').read())
 	except:
 		justIn()
-	configs = json.loads(open("config.json",'rb').read())
-	
-	state = configs['State']
+		configs = json.loads(open("config.json",'rb').read())
+
+	global state
+	state  = configs['State']
+	global dist
 	dist = configs['District']
 
 	print("Coronavirus Statistics".center(80, '-'))
